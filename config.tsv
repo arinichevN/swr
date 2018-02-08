@@ -1,2 +1,2 @@
 port	private_db_file	public_db_file
-49183	/etc/controller/gwum/data.db	/etc/controller/public.db
+49183	/etc/controller/swr/data.db	/etc/controller/public.db

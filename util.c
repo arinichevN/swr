@@ -141,7 +141,7 @@ void printData(ACPResponse *response) {
     SEND_STR("+-----------+-----------+\n")
 
     SEND_STR("+------------------------------------------------\n")
-    SEND_STR("|                  Group sensor                  \n")
+    SEND_STR("|                       Group sensor                         \n")
     SEND_STR("+-----------+-----------+-----------+------------\n")
     SEND_STR("|  group_id | sensor_id |success_cnt|result_list \n")
     SEND_STR("+-----------+-----------+-----------+------------\n")
@@ -163,7 +163,6 @@ void printData(ACPResponse *response) {
         }
     }
     SEND_STR("+-----------+-----------+-----------+------------\n")
-
     SEND_STR("+-----------------------------------------------------------------------------------+\n")
     SEND_STR("|                                   Sensor                                          |\n")
     SEND_STR("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+\n")
@@ -179,6 +178,7 @@ void printData(ACPResponse *response) {
                 sensor_fts_list.item[i].value.tm.tv_nsec,
                 sensor_fts_list.item[i].value.state
                 );
+        SEND_STR(q)
     }
     SEND_STR("+-----------+-----------+-----------+-----------+-----------+-----------+-----------+\n")
 
