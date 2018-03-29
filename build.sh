@@ -7,7 +7,7 @@ CONF_DIR=/etc/controller
 CONF_DIR_APP=$CONF_DIR/$APP
 
 #DEBUG_PARAM="-Wall -pedantic"
-DEBUG_PARAM="-Wall"
+DEBUG_PARAM="-Wall -pedantic -g"
 MODE_DEBUG=-DMODE_DEBUG
 MODE_FULL=-DMODE_FULL
 
@@ -57,12 +57,13 @@ function build_lib {
 	gcc $1  -c timef.c $DEBUG_PARAM && \
 	gcc   -c udp.c $DEBUG_PARAM && \
 	gcc $1  -c util.c $DEBUG_PARAM && \
+	gcc $1  -c tsv.c $DEBUG_PARAM && \
 	cd acp && \
 	gcc   -c main.c $DEBUG_PARAM && \
 	cd ../ && \
 	echo "library: making archive..." && \
 	rm -f libpac.a
-	ar -crv libpac.a app.o crc.o dbl.o timef.o udp.o util.o configl.o acp/main.o && echo "library: done"
+	ar -crv libpac.a app.o crc.o dbl.o timef.o udp.o util.o tsv.o configl.o acp/main.o && echo "library: done"
 	rm -f *.o acp/*.o
 }
 

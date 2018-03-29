@@ -1,2 +1,2 @@
-port	private_db_file	public_db_file
-49183	/etc/controller/swr/data.db	/etc/controller/public.db
+port	db_data_path
+49183	/etc/controller/swr/data.db

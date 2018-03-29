@@ -2,58 +2,42 @@
 
 int app_state = APP_INIT;
 
-char db_data_path[LINE_SIZE];
-char db_public_path[LINE_SIZE];
+TSVresult config_tsv = TSVRESULT_INITIALIZER;
+char *db_data_path;
 
 int sock_port = -1;
 int sock_fd = -1;
 int sock_fd_tf = -1;
 Peer peer_client = {.fd = &sock_fd, .addr_size = sizeof peer_client.addr};
-PeerList peer_list;
-SensorFTSList sensor_fts_list;
-GroupList group_list;
-I1List i1l;
+
+PeerList peer_list = LIST_INITIALIZER;
+SensorFTSList sensor_fts_list = LIST_INITIALIZER;
+GroupList group_list = LIST_INITIALIZER;
 
 #include "util.c"
 #include "db.c"
 
-int readSettings() {
-#ifdef MODE_DEBUG
-    printf("readSettings: configuration file to read: %s\n", CONFIG_FILE);
-#endif
-    FILE* stream = fopen(CONFIG_FILE, "r");
-    if (stream == NULL) {
-#ifdef MODE_DEBUG
-        perror("readSettings()");
-#endif
+int readSettings(TSVresult* r, const char *data_path, int *port, char **db_data_path) {
+    if (!TSVinit(r, data_path)) {
         return 0;
     }
-    skipLine(stream);
-    int n;
-    n = fscanf(stream, "%d\t%255s\t%255s\n",
-            &sock_port,
-            db_data_path,
-            db_public_path
-            );
-    if (n != 3) {
-        fclose(stream);
-#ifdef MODE_DEBUG
-        fputs("ERROR: readSettings: bad format\n", stderr);
-#endif
+    int _port = TSVgetis(r, 0, "port");
+    char *_db_data_path = TSVgetvalues(r, 0, "db_data_path");
+    if (TSVnullreturned(r)) {
         return 0;
     }
-    fclose(stream);
-#ifdef MODE_DEBUG
-
-    printf("readSettings: \n\tsock_port: %d, \n\tdb_data_path: %s, \n\tdb_public_path: %s\n", sock_port, db_data_path, db_public_path);
-#endif
+    *port = _port;
+    *db_data_path = _db_data_path;
     return 1;
 }
 
 void initApp() {
-    if (!readSettings()) {
+    if (!readSettings(&config_tsv, CONFIG_FILE, &sock_port, &db_data_path)) {
         exit_nicely_e("initApp: failed to read settings\n");
     }
+#ifdef MODE_DEBUG
+    printf("%s(): \n\tsock_port: %d, \n\tdb_data_path: %s\n", F, sock_port, db_data_path);
+#endif
     if (!initServer(&sock_fd, sock_port)) {
         exit_nicely_e("initApp: failed to initialize udp server\n");
     }
@@ -63,34 +47,24 @@ void initApp() {
 }
 
 int initData() {
-    if (!config_getPeerList(&peer_list, &sock_fd_tf, db_public_path)) {
-        FREE_LIST(&peer_list)
+    if (!config_getPeerList(&peer_list, &sock_fd_tf, db_data_path)) {
+        freePeerList(&peer_list);
         return 0;
     }
     if (!config_getSensorFTSList(&sensor_fts_list, &peer_list, db_data_path)) {
         FREE_LIST(&sensor_fts_list)
-        FREE_LIST(&peer_list)
+        freePeerList(&peer_list);
         return 0;
     }
     if (!getGroupList(&group_list, db_data_path)) {
         FREE_LIST(&sensor_fts_list)
-        FREE_LIST(&peer_list)
+        freePeerList(&peer_list);
         return 0;
     }
     if (!prepGroupList(&group_list, &sensor_fts_list)) {
         freeGroupList();
         FREE_LIST(&sensor_fts_list)
-        FREE_LIST(&peer_list)
-        return 0;
-    }
-    if (!initI1List(&i1l, group_list.length)) {
-#ifdef MODE_DEBUG
-        fputs("initData: ERROR: failed to allocate memory for i1l\n", stderr);
-#endif
-        FREE_LIST(&i1l)
-        freeGroupList();
-        FREE_LIST(&sensor_fts_list)
-        FREE_LIST(&peer_list)
+        freePeerList(&peer_list);
         return 0;
     }
     return 1;
@@ -100,6 +74,7 @@ int initData() {
 void serverRun(int *state, int init_state) {
     SERVER_HEADER
     SERVER_APP_ACTIONS
+    DEF_SERVER_I1LIST
     if (ACP_CMD_IS(ACP_CMD_GET_FTS)) {
         PARSE_I1LIST
         for (int i = 0; i < i1l.length; i++) {
@@ -114,10 +89,9 @@ void serverRun(int *state, int init_state) {
 }
 
 void freeData() {
-    FREE_LIST(&i1l)
     freeGroupList();
-    FREE_LIST(&sensor_fts_list)
-    FREE_LIST(&peer_list)
+    FREE_LIST(&sensor_fts_list);
+    freePeerList(&peer_list);
 #ifdef MODE_DEBUG
     puts("freeData: done");
 #endif
@@ -127,6 +101,7 @@ void freeApp() {
     freeData();
     freeSocketFd(&sock_fd);
     freeSocketFd(&sock_fd_tf);
+    TSVclear(&config_tsv);
 }
 
 void exit_nicely() {
@@ -158,7 +133,7 @@ int main(int argc, char** argv) {
     int data_initialized = 0;
     while (1) {
 #ifdef MODE_DEBUG
-        printf("main(): %s %d\n", getAppState(app_state), data_initialized);
+        printf("%s(): %s %d\n", F, getAppState(app_state), data_initialized);
 #endif
         switch (app_state) {
             case APP_INIT:
